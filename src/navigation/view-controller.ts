@@ -179,7 +179,7 @@ export class ViewController {
 
     let options = assign({}, this._leavingOpts, navOptions);
     this._onWillDismiss && this._onWillDismiss(data, role);
-    return this._nav.remove(this._nav.indexOf(this), 1, options).then(() => {
+    return this._nav.removeView(this, options).then(() => {
       this._onDidDismiss && this._onDidDismiss(data, role);
       this._onDidDismiss = null;
       return data;
@@ -216,7 +216,6 @@ export class ViewController {
 
   /**
    * Check to see if you can go back in the navigation stack.
-   * @param {boolean} Check whether or not you can go back from this page
    * @returns {boolean} Returns if it's possible to go back from this Page.
    */
   enableBack(): boolean {
@@ -434,6 +433,15 @@ export class ViewController {
   /**
    * @private
    */
+  _preLoad() {
+    this._lifecycle('PreLoad');
+  }
+
+  /**
+   * @private
+   * The view has loaded. This event only happens once per view will be created.
+   * This event is fired before the component and his children have been initialized.
+   */
   _willLoad() {
     this._lifecycle('WillLoad');
   }
@@ -528,26 +536,25 @@ export class ViewController {
       this._cmp.destroy();
     }
 
-    if (this._nav) {
-      // remove it from the nav
-      const index = this._nav.indexOf(this);
-      if (index > -1) {
-        this._nav._views.splice(index, 1);
-      }
-    }
-
     this._nav = this._cmp = this.instance = this._cntDir = this._cntRef = this._hdrDir = this._ftrDir = this._nb = this._onWillDismiss = null;
   }
 
   /**
    * @private
    */
-  _lifecycleTest(lifecycle: string): boolean | string | Promise<any> {
+  _lifecycleTest(lifecycle: string): boolean | Promise<any> {
     let instance = this.instance;
     let methodName = 'ionViewCan' + lifecycle;
     if (instance && instance[methodName]) {
       try {
-        return instance[methodName]();
+        let result = instance[methodName]();
+        if (result === false) {
+          return false;
+        } else if (result instanceof Promise) {
+          return result;
+        } else {
+          return true;
+        }
 
       } catch (e) {
         console.error(`${this.name} ${methodName} error: ${e.message}`);
@@ -571,7 +578,6 @@ export class ViewController {
   }
 
 }
-
 
 export function isViewController(viewCtrl: any) {
   return !!(viewCtrl && (<ViewController>viewCtrl)._didLoad && (<ViewController>viewCtrl)._willUnload);

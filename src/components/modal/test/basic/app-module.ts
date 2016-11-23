@@ -34,7 +34,11 @@ export class SomeAppProvider {
 export class E2EPage {
   platforms: string[];
 
-  constructor(public navCtrl: NavController, public modalCtrl: ModalController, config: Config, platform: Platform) {
+  constructor(
+    public navCtrl: NavController,
+    public modalCtrl: ModalController,
+    public toastCtrl: ToastController,
+    config: Config, platform: Platform) {
     console.log('platforms', platform.platforms());
     console.log('mode', config.get('mode'));
 
@@ -58,6 +62,10 @@ export class E2EPage {
     this.platforms = platform.platforms();
   }
 
+  push() {
+    this.navCtrl.push(E2EPage);
+  }
+
   presentModal() {
     let modal = this.modalCtrl.create(ModalPassData, { userId: 8675309 });
     modal.present();
@@ -73,12 +81,13 @@ export class E2EPage {
   }
 
   presentModalChildNav() {
-    this.modalCtrl.create(ContactUs).present();
+    this.modalCtrl.create(ContactUs, null, {
+      enableBackdropDismiss: false
+    }).present();
   }
 
   presentToolbarModal() {
-    let modal = this.modalCtrl.create(ToolbarModal);
-    modal.present();
+    this.modalCtrl.create(ToolbarModal).present();
   }
 
   presentModalWithInputs() {
@@ -87,6 +96,28 @@ export class E2EPage {
       console.log('Modal with inputs data:', data);
     });
     modal.present();
+  }
+
+  presentNavModalWithToast() {
+    this.toastCtrl.create({
+      message: 'Will present a modal with child nav...',
+      duration: 1000,
+    }).present();
+
+    setTimeout(() => {
+      this.modalCtrl.create(ContactUs).present();
+    }, 500);
+  }
+
+  presentToolbarModalWithToast() {
+    this.toastCtrl.create({
+      message: 'Will present a modal with toolbars...',
+      duration: 1000,
+    }).present();
+
+    setTimeout(() => {
+      this.modalCtrl.create(ToolbarModal).present();
+    }, 500);
   }
 
   ionViewDidLoad() {
@@ -130,13 +161,16 @@ export class E2EPage {
         </ion-item>
       </ion-list>
       <button ion-button full (click)="submit()">Submit</button>
-      <p>ionViewCanEnter ({{called.ionViewCanEnter}})</p>
-      <p>ionViewCanLeave ({{called.ionViewCanLeave}})</p>
-      <p>ionViewDidLoad ({{called.ionViewDidLoad}})</p>
-      <p>ionViewWillEnter ({{called.ionViewWillEnter}})</p>
-      <p>ionViewDidEnter ({{called.ionViewDidEnter}})</p>
-      <p>ionViewWillLeave ({{called.ionViewWillLeave}})</p>
-      <p>ionViewDidLeave ({{called.ionViewDidLeave}})</p>
+      <div padding>
+        <p>ionViewCanEnter ({{called.ionViewCanEnter}})</p>
+        <p>ionViewCanLeave ({{called.ionViewCanLeave}})</p>
+        <p>ionViewWillLoad ({{called.ionViewWillLoad}})</p>
+        <p>ionViewDidLoad ({{called.ionViewDidLoad}})</p>
+        <p>ionViewWillEnter ({{called.ionViewWillEnter}})</p>
+        <p>ionViewDidEnter ({{called.ionViewDidEnter}})</p>
+        <p>ionViewWillLeave ({{called.ionViewWillLeave}})</p>
+        <p>ionViewDidLeave ({{called.ionViewDidLeave}})</p>
+      </div>
     </ion-content>
   `,
   providers: [SomeComponentProvider]
@@ -161,6 +195,7 @@ export class ModalPassData {
     this.called = {
       ionViewCanEnter: 0,
       ionViewCanLeave: 0,
+      ionViewWillLoad: 0,
       ionViewDidLoad: 0,
       ionViewWillEnter: 0,
       ionViewDidEnter: 0,
@@ -194,6 +229,11 @@ export class ModalPassData {
       alert.addButton({ text: 'Cancel', role: 'cancel', handler: reject });
       alert.present();
     });
+  }
+
+  ionViewWillLoad() {
+    console.log('ModalPassData ionViewWillLoad fired');
+    this.called.ionViewWillLoad++;
   }
 
   ionViewDidLoad() {
@@ -383,6 +423,7 @@ export class ContactUs {
     <ion-content padding>
       <p>ionViewCanEnter ({{called.ionViewCanEnter}})</p>
       <p>ionViewCanLeave ({{called.ionViewCanLeave}})</p>
+      <p>ionViewWillLoad ({{called.ionViewWillLoad}})</p>
       <p>ionViewDidLoad ({{called.ionViewDidLoad}})</p>
       <p>ionViewWillEnter ({{called.ionViewWillEnter}})</p>
       <p>ionViewDidEnter ({{called.ionViewDidEnter}})</p>
@@ -412,7 +453,9 @@ export class ModalFirstPage {
     public navCtrl: NavController,
     public app: App,
     public actionSheetCtrl: ActionSheetController,
+    public toastCtrl: ToastController,
     public alertCtrl: AlertController) {
+
     for (let i = 0; i < 50; i++) {
       this.items.push({
         value: (i + 1)
@@ -422,6 +465,7 @@ export class ModalFirstPage {
     this.called = {
       ionViewCanEnter: 0,
       ionViewCanLeave: 0,
+      ionViewWillLoad: 0,
       ionViewDidLoad: 0,
       ionViewWillEnter: 0,
       ionViewDidEnter: 0,
@@ -431,10 +475,17 @@ export class ModalFirstPage {
   }
 
   push() {
-    let page = ModalSecondPage;
-    let params = { id: 8675309, myData: [1, 2, 3, 4] };
+    this.toastCtrl.create({
+      message: 'Will push a page in a moment...',
+      duration: 1000,
+    }).present();
 
-    this.navCtrl.push(page, params);
+    setTimeout(() => {
+      this.navCtrl.push(ModalSecondPage, {
+        id: 8675309,
+        myData: [1, 2, 3, 4]
+      });
+    }, 500);
   }
 
   dismiss() {
@@ -451,6 +502,11 @@ export class ModalFirstPage {
     console.log('ModalFirstPage ionViewCanLeave fired');
     this.called.ionViewCanLeave++;
     return true;
+  }
+
+  ionViewWillLoad() {
+    console.log('ModalFirstPage ionViewWillLoad fired');
+    this.called.ionViewWillLoad++;
   }
 
   ionViewDidLoad() {
@@ -479,10 +535,12 @@ export class ModalFirstPage {
   }
 
   ionViewWillLeave() {
+    console.log('ModalFirstPage ionViewWillLeave fired');
     this.called.ionViewWillLeave++;
   }
 
   ionViewDidLeave() {
+    console.log('ModalFirstPage ionViewDidLeave fired');
     this.called.ionViewDidLeave++;
   }
 
@@ -586,7 +644,8 @@ export class E2EApp {
   ],
   imports: [
     IonicModule.forRoot(E2EApp, {
-      statusbarPadding: true
+      statusbarPadding: true,
+      swipeBackEnabled: true
     })
   ],
   bootstrap: [IonicApp],

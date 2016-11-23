@@ -1,26 +1,32 @@
 import { ItemSliding } from './item-sliding';
 import { List } from '../list/list';
 
-import { GesturePriority } from '../../gestures/gesture-controller';
+import { GestureController, GesturePriority, GESTURE_ITEM_SWIPE } from '../../gestures/gesture-controller';
 import { PanGesture } from '../../gestures/drag-gesture';
 import { pointerCoord } from '../../util/dom';
+import { NativeRafDebouncer } from '../../util/debouncer';
 
-const DRAG_THRESHOLD = 10;
-const MAX_ATTACK_ANGLE = 20;
-
+/**
+ * @private
+ */
 export class ItemSlidingGesture extends PanGesture {
+
   private preSelectedContainer: ItemSliding = null;
   private selectedContainer: ItemSliding = null;
   private openContainer: ItemSliding = null;
   private firstCoordX: number;
   private firstTimestamp: number;
 
-  constructor(public list: List) {
+  constructor(public list: List, gestureCtrl: GestureController) {
     super(list.getNativeElement(), {
-      maxAngle: MAX_ATTACK_ANGLE,
-      threshold: DRAG_THRESHOLD,
-      gesture: list._gestureCtrl.create('item-sliding', {
+      maxAngle: 20,
+      threshold: 10,
+      zone: false,
+      debouncer: new NativeRafDebouncer(),
+      gesture: gestureCtrl.createGesture({
+        name: GESTURE_ITEM_SWIPE,
         priority: GesturePriority.SlidingItem,
+        disableScroll: true
       })
     });
   }
@@ -64,6 +70,7 @@ export class ItemSlidingGesture extends PanGesture {
 
   onDragEnd(ev: any) {
     ev.preventDefault();
+
     let coordX = pointerCoord(ev).x;
     let deltaX = (coordX - this.firstCoordX);
     let deltaT = (Date.now() - this.firstTimestamp);

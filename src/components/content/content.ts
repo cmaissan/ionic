@@ -4,11 +4,11 @@ import { App } from '../app/app';
 import { Ion } from '../ion';
 import { Config } from '../../config/config';
 import { Keyboard } from '../../util/keyboard';
-import { nativeRaf, nativeTimeout, transitionEnd}  from '../../util/dom';
+import { nativeRaf, nativeTimeout, transitionEnd } from '../../util/dom';
 import { ScrollView } from '../../util/scroll-view';
 import { Tabs } from '../tabs/tabs';
 import { ViewController } from '../../navigation/view-controller';
-import { isTrueProperty } from '../../util/util';
+import { isTrueProperty, assert } from '../../util/util';
 
 
 /**
@@ -121,7 +121,7 @@ export class Content extends Ion {
   _paddingRight: number;
   _paddingBottom: number;
   _paddingLeft: number;
-  _scrollPadding: number;
+  _scrollPadding: number = 0;
   _headerHeight: number;
   _footerHeight: number;
   _tabbarHeight: number;
@@ -165,10 +165,7 @@ export class Content extends Ion {
     @Optional() viewCtrl: ViewController,
     @Optional() public _tabs: Tabs
   ) {
-    super(config, elementRef, renderer);
-
-    this._mode = config.get('mode');
-    this._setMode('content', this._mode);
+    super(config, elementRef, renderer, 'content');
 
     this._sbPadding = config.getBoolean('statusbarPadding', false);
 
@@ -182,12 +179,15 @@ export class Content extends Ion {
    * @private
    */
   ngOnInit() {
-    this._fixedEle = this._elementRef.nativeElement.children[0];
-    this._scrollEle = this._elementRef.nativeElement.children[1];
+    let children = this._elementRef.nativeElement.children;
+    assert(children && children.length >= 2, 'content needs at least two children');
+
+    this._fixedEle = children[0];
+    this._scrollEle = children[1];
 
     this._zone.runOutsideAngular(() => {
       this._scroll = new ScrollView(this._scrollEle);
-      this._scLsn = this.addScrollListener(this._app.setScrolling);
+      this._scLsn = this.addScrollListener(this._app.setScrolling.bind(this._app));
     });
   }
 
@@ -249,8 +249,12 @@ export class Content extends Ion {
     return this._addListener('mousemove', handler);
   }
 
+  /**
+   * @private
+   */
   _addListener(type: string, handler: any): Function {
-    if (!this._scrollEle) { return; }
+    assert(handler, 'handler must be valid');
+    assert(this._scrollEle, '_scrollEle must be valid');
 
     // ensure we're not creating duplicates
     this._scrollEle.removeEventListener(type, handler);
@@ -321,8 +325,9 @@ export class Content extends Ion {
    * @param {number} [duration]  Duration of the scroll animation in milliseconds. Defaults to `300`.
    * @returns {Promise} Returns a promise which is resolved when the scroll has completed.
    */
-  scrollTo(x: number, y: number, duration: number = 300): Promise<any> {
-    return this._scroll.scrollTo(x, y, duration);
+  scrollTo(x: number, y: number, duration: number = 300, done?: Function): Promise<any> {
+    console.debug(`content, scrollTo started, y: ${y}, duration: ${duration}`);
+    return this._scroll.scrollTo(x, y, duration, done);
   }
 
   /**
@@ -332,6 +337,7 @@ export class Content extends Ion {
    * @returns {Promise} Returns a promise which is resolved when the scroll has completed.
    */
   scrollToTop(duration: number = 300) {
+    console.debug(`content, scrollToTop, duration: ${duration}`);
     return this._scroll.scrollToTop(duration);
   }
 
@@ -348,6 +354,7 @@ export class Content extends Ion {
    * @param {number} top
    */
   setScrollTop(top: number) {
+    console.debug(`content, setScrollTop, top: ${top}`);
     this._scroll.setTop(top);
   }
 
@@ -357,6 +364,7 @@ export class Content extends Ion {
    * @returns {Promise} Returns a promise which is resolved when the scroll has completed.
    */
   scrollToBottom(duration: number = 300) {
+    console.debug(`content, scrollToBottom, duration: ${duration}`);
     return this._scroll.scrollToBottom(duration);
   }
 
@@ -407,26 +415,23 @@ export class Content extends Ion {
    * {number} dimensions.scrollLeft  scroll scrollLeft
    * {number} dimensions.scrollRight  scroll scrollLeft + scrollWidth
    */
-  getContentDimensions() {
-    let _scrollEle = this._scrollEle;
-    let parentElement = _scrollEle.parentElement;
+  getContentDimensions(): ContentDimensions {
+    const scrollEle = this._scrollEle;
+    const parentElement = scrollEle.parentElement;
 
     return {
-      contentHeight: parentElement.offsetHeight,
-      contentTop: parentElement.offsetTop,
-      contentBottom: parentElement.offsetTop + parentElement.offsetHeight,
+      contentHeight: parentElement.offsetHeight - this.contentTop - this.contentBottom,
+      contentTop: this.contentTop,
+      contentBottom: this.contentBottom,
 
       contentWidth: parentElement.offsetWidth,
       contentLeft: parentElement.offsetLeft,
-      contentRight: parentElement.offsetLeft + parentElement.offsetWidth,
 
-      scrollHeight: _scrollEle.scrollHeight,
-      scrollTop: _scrollEle.scrollTop,
-      scrollBottom: _scrollEle.scrollTop + _scrollEle.scrollHeight,
+      scrollHeight: scrollEle.scrollHeight,
+      scrollTop: scrollEle.scrollTop,
 
-      scrollWidth: _scrollEle.scrollWidth,
-      scrollLeft: _scrollEle.scrollLeft,
-      scrollRight: _scrollEle.scrollLeft + _scrollEle.scrollWidth,
+      scrollWidth: scrollEle.scrollWidth,
+      scrollLeft: scrollEle.scrollLeft,
     };
   }
 
@@ -437,11 +442,12 @@ export class Content extends Ion {
    * so content below the keyboard can be scrolled into view.
    */
   addScrollPadding(newPadding: number) {
+    assert(typeof this._scrollPadding === 'number', '_scrollPadding must be a number');
     if (newPadding > this._scrollPadding) {
-      console.debug('content addScrollPadding', newPadding);
+      console.debug(`content, addScrollPadding, newPadding: ${newPadding}, this._scrollPadding: ${this._scrollPadding}`);
 
       this._scrollPadding = newPadding;
-      this._scrollEle.style.paddingBottom = newPadding + 'px';
+      this._scrollEle.style.paddingBottom = (newPadding > 0) ? newPadding + 'px' : '';
     }
   }
 
@@ -451,14 +457,15 @@ export class Content extends Ion {
    */
   clearScrollPaddingFocusOut() {
     if (!this._inputPolling) {
+      console.debug(`content, clearScrollPaddingFocusOut begin`);
       this._inputPolling = true;
 
       this._keyboard.onClose(() => {
-        this._scrollPadding = 0;
-        this._scrollEle.style.paddingBottom = (this._paddingBottom > 0 ? this._paddingBottom + 'px' : '');
+        console.debug(`content, clearScrollPaddingFocusOut _keyboard.onClose`);
         this._inputPolling = false;
+        this._scrollPadding = -1;
         this.addScrollPadding(0);
-      }, 200, Infinity);
+      }, 200, 3000);
     }
   }
 
@@ -489,16 +496,18 @@ export class Content extends Ion {
 
     let ele: HTMLElement = this._elementRef.nativeElement;
     if (!ele) {
+      assert(false, 'ele should be valid');
       return;
     }
 
-    let parentEle: HTMLElement = ele.parentElement;
     let computedStyle: any;
-
-    for (var i = 0; i < parentEle.children.length; i++) {
-      ele = <HTMLElement>parentEle.children[i];
-
-      if (ele.tagName === 'ION-CONTENT') {
+    let tagName: string;
+    let parentEle: HTMLElement = ele.parentElement;
+    let children = parentEle.children;
+    for (var i = children.length - 1; i >= 0; i--) {
+      ele = <HTMLElement>children[i];
+      tagName = ele.tagName;
+      if (tagName === 'ION-CONTENT') {
         if (this._fullscreen) {
           computedStyle = getComputedStyle(ele);
           this._paddingTop = parsePxUnit(computedStyle.paddingTop);
@@ -507,10 +516,10 @@ export class Content extends Ion {
           this._paddingLeft = parsePxUnit(computedStyle.paddingLeft);
         }
 
-      } else if (ele.tagName === 'ION-HEADER') {
+      } else if (tagName === 'ION-HEADER') {
         this._headerHeight = ele.clientHeight;
 
-      } else if (ele.tagName === 'ION-FOOTER') {
+      } else if (tagName === 'ION-FOOTER') {
         this._footerHeight = ele.clientHeight;
         this._footerEle = ele;
       }
@@ -540,13 +549,16 @@ export class Content extends Ion {
    * DOM WRITE
    */
   writeDimensions() {
+
     let scrollEle = this._scrollEle as any;
     if (!scrollEle) {
+      assert(false, 'this._scrollEle should be valid');
       return;
     }
 
     let fixedEle = this._fixedEle;
     if (!fixedEle) {
+      assert(false, 'this._fixedEle should be valid');
       return;
     }
 
@@ -556,14 +568,19 @@ export class Content extends Ion {
 
     // Tabs height
     if (this._tabsPlacement === 'top') {
+      assert(this._tabbarHeight >= 0, '_tabbarHeight has to be positive');
       contentTop += this._tabbarHeight;
 
     } else if (this._tabsPlacement === 'bottom') {
+      assert(this._tabbarHeight >= 0, '_tabbarHeight has to be positive');
       contentBottom += this._tabbarHeight;
 
       // Update footer position
       if (contentBottom > 0 && this._footerEle) {
-        this._footerEle.style.bottom = cssFormat(contentBottom - this._footerHeight);
+        let footerPos = contentBottom - this._footerHeight;
+        assert(footerPos >= 0, 'footerPos has to be positive');
+
+        this._footerEle.style.bottom = cssFormat(footerPos);
       }
     }
 
@@ -573,6 +590,9 @@ export class Content extends Ion {
     let fixedTop: number = contentTop;
     let fixedBottom: number = contentBottom;
     if (this._fullscreen) {
+      assert(this._paddingTop >= 0, '_paddingTop has to be positive');
+      assert(this._paddingBottom >= 0, '_paddingBottom has to be positive');
+
       // adjust the content with padding, allowing content to scroll under headers/footers
       // however, on iOS you cannot control the margins of the scrollbar (last tested iOS9.2)
       // only add inline padding styles if the computed padding value, which would
@@ -585,6 +605,9 @@ export class Content extends Ion {
 
     // Only update top margin if value changed
     if (contentTop !== this.contentTop) {
+      assert(contentTop >= 0, 'contentTop has to be positive');
+      assert(fixedTop >= 0, 'fixedTop has to be positive');
+
       scrollEle.style[topProperty] = cssFormat(contentTop);
       fixedEle.style.marginTop = cssFormat(fixedTop);
       this.contentTop = contentTop;
@@ -592,11 +615,13 @@ export class Content extends Ion {
 
     // Only update bottom margin if value changed
     if (contentBottom !== this.contentBottom) {
+      assert(contentBottom >= 0, 'contentBottom has to be positive');
+      assert(fixedBottom >= 0, 'fixedBottom has to be positive');
+
       scrollEle.style[bottomProperty] = cssFormat(contentBottom);
       fixedEle.style.marginBottom = cssFormat(fixedBottom);
       this.contentBottom = contentBottom;
     }
-
 
     if (this._tabsPlacement !== null && this._tabs) {
       // set the position of the tabbar
@@ -604,6 +629,7 @@ export class Content extends Ion {
         this._tabs.setTabbarPosition(this._headerHeight, -1);
 
       } else {
+        assert(this._tabsPlacement === 'bottom', 'tabsPlacement should be bottom');
         this._tabs.setTabbarPosition(-1, 0);
       }
     }
@@ -617,4 +643,19 @@ function parsePxUnit(val: string): number {
 
 function cssFormat(val: number): string {
   return (val > 0 ? val + 'px' : '');
+}
+
+export interface ContentDimensions {
+  contentHeight: number;
+  contentTop: number;
+  contentBottom: number;
+
+  contentWidth: number;
+  contentLeft: number;
+
+  scrollHeight: number;
+  scrollTop: number;
+
+  scrollWidth: number;
+  scrollLeft: number;
 }

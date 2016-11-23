@@ -3,7 +3,7 @@ import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 
 import { clamp, isNumber, isPresent, isString, isTrueProperty } from '../../util/util';
 import { Config } from '../../config/config';
-import { Debouncer } from '../../util/debouncer';
+import { TimeoutDebouncer } from '../../util/debouncer';
 import { Form } from '../../util/form';
 import { Ion } from '../ion';
 import { Item } from '../item/item';
@@ -45,7 +45,7 @@ export class RangeKnob implements OnInit {
 
   @Input() upper: boolean;
 
-  constructor(@Inject(forwardRef(() => Range)) public range: Range) {}
+  constructor( @Inject(forwardRef(() => Range)) public range: Range) { }
 
   get ratio(): number {
     return this._ratio;
@@ -217,7 +217,7 @@ export class Range extends Ion implements AfterViewInit, ControlValueAccessor, O
   _step: number = 1;
   _snaps: boolean = false;
 
-  _debouncer: Debouncer = new Debouncer(0);
+  _debouncer: TimeoutDebouncer = new TimeoutDebouncer(0);
   _events: UIEventManager = new UIEventManager();
   /**
    * @private
@@ -229,7 +229,7 @@ export class Range extends Ion implements AfterViewInit, ControlValueAccessor, O
    */
   @Input()
   set color(val: string) {
-    this._setColor('range', val);
+    this._setColor(val);
   }
 
   /**
@@ -237,7 +237,7 @@ export class Range extends Ion implements AfterViewInit, ControlValueAccessor, O
    */
   @Input()
   set mode(val: string) {
-    this._setMode('range', val);
+    this._setMode(val);
   }
 
   @ViewChild('bar') public _bar: ElementRef;
@@ -350,9 +350,7 @@ export class Range extends Ion implements AfterViewInit, ControlValueAccessor, O
     elementRef: ElementRef,
     renderer: Renderer
   ) {
-    super(config, elementRef, renderer);
-
-    this.mode = config.get('mode');
+    super(config, elementRef, renderer, 'range');
     _form.register(this);
 
     if (_item) {
@@ -602,16 +600,18 @@ export class Range extends Ion implements AfterViewInit, ControlValueAccessor, O
    * @private
    */
   ratioToValue(ratio: number) {
-    ratio = Math.round(((this._max - this._min) * ratio) + this._min);
-    return Math.round(ratio / this._step) * this._step;
+    ratio = Math.round(((this._max - this._min) * ratio));
+    ratio = Math.round(ratio / this._step) * this._step + this._min;
+    return clamp(this._min, ratio, this._max);
   }
 
   /**
    * @private
    */
   valueToRatio(value: number) {
-    value = Math.round(clamp(this._min, value, this._max) / this._step) * this._step;
-    return (value - this._min) / (this._max - this._min);
+    value = Math.round((value - this._min) / this._step) * this._step;
+    value = value / (this._max - this._min);
+    return clamp(0, value, 1);
   }
 
   /**
@@ -698,7 +698,7 @@ export class Range extends Ion implements AfterViewInit, ControlValueAccessor, O
   /**
    * @private
    */
-  onTouched() {}
+  onTouched() { }
 
   /**
    * @private

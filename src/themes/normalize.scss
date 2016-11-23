@@ -107,6 +107,10 @@ textarea {
   color: inherit;
 }
 
+textarea::placeholder {
+  padding-left: 2px;
+}
+
 form,
 input,
 optgroup,
@@ -167,6 +171,10 @@ button {
   cursor: pointer;
 
   -webkit-appearance: button;
+}
+
+[tappable] {
+  cursor: pointer;
 }
 
 // Re-set default cursor for disabled elements.

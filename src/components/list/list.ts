@@ -55,9 +55,7 @@ export class List extends Ion {
     renderer: Renderer,
     public _gestureCtrl: GestureController
   ) {
-    super(config, elementRef, renderer);
-
-    this.mode = config.get('mode');
+    super(config, elementRef, renderer, 'list');
   }
 
   /**
@@ -65,7 +63,7 @@ export class List extends Ion {
    */
   @Input()
   set mode(val: string) {
-    this._setMode('list', val);
+    this._setMode(val);
   }
 
   /**
@@ -97,7 +95,7 @@ export class List extends Ion {
 
     } else if (!this._slidingGesture) {
       console.debug('enableSlidingItems');
-      this._slidingGesture = new ItemSlidingGesture(this);
+      this._slidingGesture = new ItemSlidingGesture(this, this._gestureCtrl);
       this._slidingGesture.listen();
     }
   }

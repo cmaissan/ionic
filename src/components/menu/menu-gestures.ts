@@ -2,22 +2,31 @@ import { Menu } from './menu';
 import { SlideEdgeGesture } from '../../gestures/slide-edge-gesture';
 import { SlideData } from '../../gestures/slide-gesture';
 import { assign } from '../../util/util';
-import { GesturePriority } from '../../gestures/gesture-controller';
+import { GestureController, GesturePriority, GESTURE_MENU_SWIPE } from '../../gestures/gesture-controller';
+import { NativeRafDebouncer } from '../../util/debouncer';
 
 /**
  * Gesture attached to the content which the menu is assigned to
  */
 export class MenuContentGesture extends SlideEdgeGesture {
 
-  constructor(public menu: Menu, contentEle: HTMLElement, options: any = {}) {
+  constructor(
+    public menu: Menu,
+    contentEle: HTMLElement,
+    gestureCtrl: GestureController,
+    options: any = {}
+  ) {
     super(contentEle, assign({
       direction: 'x',
       edge: menu.side,
       threshold: 0,
       maxEdgeStart: menu.maxEdgeStart || 50,
-      maxAngle: 40,
-      gesture: menu.gestureCtrl.create('menu-swipe', {
+      zone: false,
+      debouncer: new NativeRafDebouncer(),
+      gesture: gestureCtrl.createGesture({
+        name: GESTURE_MENU_SWIPE,
         priority: GesturePriority.MenuSwipe,
+        disableScroll: true
       })
     }, options));
   }
@@ -45,9 +54,6 @@ export class MenuContentGesture extends SlideEdgeGesture {
     let z = (this.menu.side === 'right' ? slide.min : slide.max);
     let stepValue = (slide.distance / z);
 
-    console.debug('menu gesture, onSlide', this.menu.side, 'distance', slide.distance, 'min', slide.min, 'max', slide.max, 'z', z, 'stepValue', stepValue);
-
-    ev.preventDefault();
     this.menu.swipeProgress(stepValue);
   }
 
@@ -62,16 +68,17 @@ export class MenuContentGesture extends SlideEdgeGesture {
     let shouldCompleteLeft = (velocity <= 0)
       && (velocity < -0.2 || slide.delta < -z);
 
-    console.debug('menu gesture, onSlideEnd', this.menu.side);
-    console.debug('distance', slide.distance);
-    console.debug('delta', slide.delta);
-    console.debug('velocity', velocity);
-    console.debug('min', slide.min);
-    console.debug('max', slide.max);
-    console.debug('shouldCompleteLeft', shouldCompleteLeft);
-    console.debug('shouldCompleteRight', shouldCompleteRight);
-    console.debug('currentStepValue', currentStepValue);
-    this.menu.swipeEnd(shouldCompleteLeft, shouldCompleteRight, currentStepValue);
+    console.debug('menu gesture, onSlideEnd', this.menu.side,
+      'distance', slide.distance,
+      'delta', slide.delta,
+      'velocity', velocity,
+      'min', slide.min,
+      'max', slide.max,
+      'shouldCompleteLeft', shouldCompleteLeft,
+      'shouldCompleteRight', shouldCompleteRight,
+      'currentStepValue', currentStepValue);
+
+    this.menu.swipeEnd(shouldCompleteLeft, shouldCompleteRight, currentStepValue, velocity);
   }
 
   getElementStartPos(slide: SlideData, ev: any) {

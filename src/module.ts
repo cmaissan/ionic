@@ -28,13 +28,12 @@ import { PopoverController } from './components/popover/popover';
 import { QueryParams, setupQueryParams, UrlToken } from './platform/query-params';
 import { TapClick, setupTapClick } from './components/tap-click/tap-click';
 import { ToastController } from './components/toast/toast';
-import { Translate } from './translation/translate';
 import { registerModeConfigs } from './config/mode-registry';
 import { registerTransitions } from './transitions/transition-registry';
 import { TransitionController } from './transitions/transition-controller';
 import { AppRootToken } from './components/app/app-root';
 import { UrlSerializer, setupUrlSerializer, DeepLinkConfigToken } from './navigation/url-serializer';
-
+import { ClickBlock } from './util/click-block';
 /**
  * Import Overlay Entry Components
  */
@@ -108,7 +107,8 @@ export { ViewController } from './navigation/view-controller';
     ModalCmp,
     PickerCmp,
     PopoverCmp,
-    ToastCmp
+    ToastCmp,
+    ClickBlock
   ],
   entryComponents: [
     ActionSheetCmp,
@@ -180,7 +180,6 @@ export class IonicModule {
         PopoverController,
         TapClick,
         ToastController,
-        Translate,
         TransitionController,
 
         { provide: LocationStrategy, useFactory: provideLocationStrategy, deps: [ PlatformLocation, [ new Inject(APP_BASE_HREF), new Optional()], Config ] },

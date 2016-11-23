@@ -120,7 +120,7 @@ export class TextInput extends InputBase {
   }
 
   /**
-   * @private
+   * @input {string} The text value of the input
    */
   @Input()
   get value() {
@@ -142,7 +142,7 @@ export class TextInput extends InputBase {
   }
 
   /**
-   * @private
+   * @input {bool} If the input should be disabled or not
    */
   @Input()
   get disabled() {
@@ -157,8 +157,20 @@ export class TextInput extends InputBase {
    */
   @Input()
   set mode(val: string) {
-    this._setMode('input', val);
+    this._setMode(val);
   }
+
+  /**
+   * @input {boolean} whether to clear the input upon editing or not
+   */
+  @Input()
+  get clearOnEdit() {
+    return this._clearOnEdit;
+  }
+  set clearOnEdit(val: any) {
+    super.setClearOnEdit(val);
+  }
+
 
   /**
    * @private
@@ -206,6 +218,11 @@ export class TextInput extends InputBase {
     if (this._item) {
       this._item.setElementClass('item-input', true);
       this._item.registerInput(this._type);
+    }
+
+    // By default, password inputs clear after focus when they have content
+    if (this.type === 'password' && this.clearOnEdit !== false) {
+      this.clearOnEdit = true;
     }
   }
 
@@ -305,12 +322,12 @@ export class TextArea extends InputBase {
   }
 
   /**
-   * @private
+   * @input {string} The placeholder for the textarea
    */
   @Input() placeholder: string = '';
 
   /**
-   * @private
+   * @input {string} The value of the textarea
    */
   @Input()
   get value() {
@@ -321,18 +338,7 @@ export class TextArea extends InputBase {
   }
 
   /**
-   * @private
-   */
-  @Input()
-  get type() {
-    return this._type;
-  }
-  set type(val: any) {
-    super.setType(val);
-  }
-
-  /**
-   * @private
+   * @input {bool} Wheather the textarea should be disabled or not
    */
   @Input()
   get disabled() {
@@ -347,7 +353,7 @@ export class TextArea extends InputBase {
    */
   @Input()
   set mode(val: string) {
-    this._setMode('input', val);
+    this._setMode(val);
   }
 
   /**
@@ -367,12 +373,12 @@ export class TextArea extends InputBase {
   }
 
   /**
-   * @private
+   * @output {event} Expression to call when the textarea no longer has focus
    */
   @Output() blur: EventEmitter<Event> = new EventEmitter<Event>();
 
   /**
-   * @private
+   * @output {event} Expression to call when the textarea has focus
    */
   @Output() focus: EventEmitter<Event> = new EventEmitter<Event>();
 

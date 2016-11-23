@@ -60,7 +60,7 @@ module.exports = function(currentVersion, initialVersionBuild) {
   }
 
   // new version, add it to the versions list
-  if (currentVersion != 'nightly' && !_.contains(versions, currentVersion)){
+  if (currentVersion != 'nightly' && !_.includes(versions, currentVersion)){
     versions.unshift(currentVersion);
   }
 
@@ -137,6 +137,13 @@ module.exports = function(currentVersion, initialVersionBuild) {
 //   });
 // })
 
+// Configure allowedDocTypes
+.config(function(extractAccessTransform) {
+  var allowedDocTypes = ['member'];
+  allowedDocTypes.forEach(function(docType) {
+    extractAccessTransform.allowedDocTypes.add(docType);
+  });
+})
 
 // Configure links
 .config(function(getLinkInfo) {

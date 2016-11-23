@@ -130,6 +130,16 @@ import { ViewController } from '../../navigation/view-controller';
  * }
  *```
  *
+ * You can also switch tabs from a child component by calling `select()` on the
+ * parent view using the `NavController` instance. For example, assuming you have
+ * a `TabsPage` component, you could call the following from any of the child
+ * components to switch to `TabsRoot3`:
+ *
+ *```ts
+ * switchTabs() {
+ *   this.navCtrl.parent.select(2);
+ * }
+ *```
  * @demo /docs/v2/demos/src/tabs/
  *
  * @see {@link /docs/v2/components#tabs Tabs Component Docs}
@@ -168,15 +178,13 @@ export class Tabs extends Ion implements AfterViewInit {
   id: string;
   /** @internal */
   _selectHistory: string[] = [];
-  /** @internal */
-  _subPages: boolean;
 
   /**
    * @input {string} The predefined color to use. For example: `"primary"`, `"secondary"`, `"danger"`.
    */
   @Input()
   set color(value: string) {
-    this._setColor('tabs', value);
+    this._setColor( value);
   }
 
   /**
@@ -184,7 +192,7 @@ export class Tabs extends Ion implements AfterViewInit {
    */
   @Input()
   set mode(val: string) {
-    this._setMode('tabs', val);
+    this._setMode( val);
   }
 
   /**
@@ -242,13 +250,11 @@ export class Tabs extends Ion implements AfterViewInit {
     renderer: Renderer,
     private _linker: DeepLinker
   ) {
-    super(config, elementRef, renderer);
+    super(config, elementRef, renderer, 'tabs');
 
-    this.mode = config.get('mode');
     this.parent = <NavControllerBase>parent;
     this.id = 't' + (++tabIds);
     this._sbPadding = config.getBoolean('statusbarPadding');
-    this._subPages = config.getBoolean('tabsHideOnSubPages');
     this.tabsHighlight = config.getBoolean('tabsHighlight');
 
     if (this.parent) {
